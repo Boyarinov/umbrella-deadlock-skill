@@ -59,6 +59,10 @@ Read the file listed in the right column to find exact function signatures, para
 | Notifications | `skill://deadlock-lua/docs/notifications.md` |
 | Raw struct field access | `skill://deadlock-lua/docs/raw-struct.md` |
 | All enums (ButtonCode, InputBitMask_t, FontCreate, EModifierState, etc.) | `skill://deadlock-lua/docs/enums.md` |
+| NEW_UI_LIB (high-level menu wrapper with groups, elements, gears) | `skill://deadlock-lua/docs/new-ui-lib.md` |
+| HERO_LIB (state checks, target finding, ability/item casting, projectile prediction, movement) | `skill://deadlock-lua/docs/hero-lib.md` |
+| LIB_RENDER (render wrappers, animations, hitbox/button system, image/font caching) | `skill://deadlock-lua/docs/render-lib.md` |
+| Ability diagnostics (VData fields, targeting types, casting patterns) | See "Diagnosing ability behavior" section below |
 
 For a complete onboarding walkthrough: `skill://deadlock-lua/docs/getting-started.md`
 
@@ -215,6 +219,58 @@ if visible then
 end
 ```
 
+## Diagnosing ability behavior (MCP bridge)
+
+When writing a hero combo script for an unfamiliar ability, **do NOT guess** the cast type.
+Use the MCP bridge tools to inspect the ability at runtime before writing any handling code.
+
+### Step 1: Get ability names
+```lua
+local pawn = entity_list.local_pawn()
+local abilities = pawn:get_abilities()
+for i, ab in ipairs(abilities) do
+    if ab and ab:valid() then
+        print(string.format("[%d] %s", i, ab:get_name()))
+    end
+end
+```
+
+### Step 2: Read VData targeting fields
+These fields on the ability VData determine HOW the ability targets and casts:
+```lua
+local ab = pawn:get_ability("ability_name_here")
+local vdata = ab:get_vdata()
+-- Key fields:
+vdata.m_eAbilityType            -- 1=active, 2=ultimate
+vdata.m_eAbilityActivation      -- activation mode
+vdata.m_eAbilityTargetingShape  -- 0=point/projectile, 2=directional/cone
+vdata.m_flTargetingConeAngle    -- if 0, ability has NO cone → don't use is_target_within_cone
+vdata.m_flTargetingConeHalfWidth
+vdata.m_nAbilityTargetTypes     -- bitmask of valid target types
+```
+
+### Step 3: Read ability-specific class fields
+Use `lookup_class` on the SDK class to find state fields:
+- `m_nCurrentLungeState`, `m_eUltState` → ability has state machine
+- `m_vDashDirection` → directional dash (aim at target, then cast)
+- `m_vCastPosition`, `m_qCastAngles` → stores cast location
+- `m_bInCastDelay`, `m_bChanneling` → standard cast state
+
+### Step 4: Choose the casting pattern
+
+| VData shape | Cone angle | Pattern |
+|-------------|-----------|---------|
+| 0 (point) + has projectileInfo | N/A | Projectile prediction: `predict_projectile_simulated` + `hull_projectile_will_hit` + `aim_psilent_default` with `cast_ability` in callback |
+| 0 (point) + no projectile | > 0 | Cone check: `is_target_within_cone` + buttonstate or `cast_ability` |
+| 2 (directional) | 0 | **FOV-based**: `is_target_within_fov` + `cast_ability`. Do NOT use `is_target_within_cone` (always fails with cone=0) |
+| 2 (directional) | > 0 | Cone check works: `is_target_within_cone` + `cast_ability` |
+| Any | N/A | Self-cast / no-target: just `cast_ability` directly |
+
+### Common mistake
+`HERO_LIB.is_target_within_cone` reads `m_flTargetingConeAngle` from VData. If it's 0, the function
+will always return false. For directional abilities with 0 cone angle, use `is_target_within_fov`
+to check if the target is roughly in front of you, then `HERO_LIB.cast_ability()` to fire.
+
 ## Rules when writing scripts
 
 1. **Always check `entity:valid()`** before any entity method call.
@@ -227,3 +283,87 @@ end
 8. **Particle callback data tables are reused** across handlers in the same frame -- copy fields you need.
 9. **No `require()`** -- share via globals, control load order with filename prefixes.
 10. **Look up exact signatures** from the docs before using any API function. Do not guess parameter order or types.
+
+## Library scripts (loaded via numeric prefix)
+
+These libraries are loaded before hero scripts and provide shared utilities.
+
+### NEW_UI_LIB (1_new_ui_lib.lua)
+High-level menu wrapper with automatic visibility/disable chaining.
+```lua
+-- Create a menu tab and group
+local tab = NEW_UI_LIB.create_tab(false, Menu.Find("Heroes"), "My Section")
+local group = tab:create("Settings")
+
+-- Add widgets to group -- all return chainable ui_lib_element
+local enabled = group:switch("Enable", true, "\u{f00c}")
+local speed = group:slider("Speed", 0.0, 100.0, 50.0, "%.1f", "\u{f3fd}")
+local mode = group:combo("Mode", {"Safe", "Aggressive"}, 1, "\u{f201}")
+
+-- Chain visibility: speed slider disabled unless enabled is on
+speed:link_to_ui_disable_condition(enabled)
+
+-- Read values via callable syntax
+if enabled() then
+    local spd = speed()           -- number
+    local is_safe = mode("Safe")  -- true/false by name
+end
+```
+
+### HERO_LIB (2_hero_lib.lua)
+Hero utilities: state checks, target finding, ability casting, projectile prediction.
+```lua
+-- Always available via global HERO_LIB after load
+local lp = HERO_LIB.lp  -- cached local pawn (updated each tick)
+
+-- State checks
+if HERO_LIB.is_stunned(target) or HERO_LIB.is_invulnerable(target) then return end
+
+-- Find combo target (respects UI settings + per-hero overrides)
+local target = HERO_LIB.find_combo_target(cmd, lp)
+
+-- Ability helpers
+local ability = lp:get_ability("ability_sleep_dagger")
+if ability and HERO_LIB.is_ability_ready(ability) then
+    HERO_LIB.cast_ability(cmd, lp, ability, false, false)
+end
+
+-- Projectile prediction (simulated)
+local aim_pos, predicted_pos = HERO_LIB.predict_projectile_simulated(
+    false, HERO_LIB.ENUM_PPS_INFO_FROM.PROJECTILE,
+    HERO_LIB.ENUM_MV_SIM_TYPE.SIMULATE_MOVEMENT,
+    HERO_LIB.ENUM_PPS_AIM_TO_POS.LIB_TARGET_POS,
+    target, ability
+)
+
+-- Item handling (uses menu multiselects)
+HERO_LIB.handle_all_items(cmd, lp, target,
+    items_enabled, items_smooth, items_psilent,
+    aoe_widget, target_widget, non_target_widget)
+```
+
+### LIB_RENDER (3_render_lib.lua)
+Render wrappers with caching, animations, and custom hitbox/button system.
+```lua
+-- Font loading (cached)
+local my_font = LIB_RENDER.font("Arial", {"FONTFLAG_ANTIALIAS"})
+
+-- Drawing (wraps Render API)
+LIB_RENDER.filled_rect(pos, pos + size, Color(20, 20, 20, 200), 5)
+LIB_RENDER.text(my_font, 14, pos, "Hello", Color(255), {true, false})
+LIB_RENDER.image("panorama/images/heroes/haze_mm_psd.vtex_c", pos, Vec2(32, 32), true, Color(255))
+
+-- Smooth animations
+local alpha = LIB_RENDER.calculate_value("my_fade", is_active, 2.0, 0, 1)
+alpha = LIB_RENDER.easings["out_quart"](alpha)
+
+-- Draggable hitbox (custom UI)
+local drag = LIB_RENDER.drag_hitbox(pos, size, function(el)
+    -- called while dragging; el.pos_1 is updated position
+end)
+
+-- Button hitbox (toggleable)
+local btn = LIB_RENDER.button_hitbox(pos, pos + size, false, nil, function(el)
+    -- el.value is toggled on click
+end)
+```
