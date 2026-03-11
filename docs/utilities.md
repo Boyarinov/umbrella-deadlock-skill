@@ -251,6 +251,37 @@ Silent no-op if CInputService is unavailable.
 |------|------|-------------|
 | `cmd` | `string` | Console command string to execute. |
 
+#### `utils.reload_scripts()`
+
+Reloads all Lua scripts asynchronously via the reload thread.
+Blocks the render thread during reload (OnPreloadScript/OnPostloadScript).
+Equivalent to pressing the reload bind in the menu.
+
+#### `utils.json_encode(tbl)`
+
+Encodes a Lua table to a JSON string.
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `tbl` | `table` | Table to encode. |
+
+**Returns:** `string` — JSON string.
+
+#### `utils.json_decode(str)`
+
+Decodes a JSON string to a Lua table.
+Returns nil if the string is not valid JSON.
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `str` | `string` | JSON string to decode. |
+
+**Returns:** `table|nil` — Decoded table, or nil on parse error.
+
 ## camp_info
 
 Neutral camp information returned by `utils.get_neutral_camps`.
