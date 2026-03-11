@@ -436,11 +436,7 @@ local target_pos = Vector(1000, 500, 100)
 local result = trace.line(
     eye_pos,
     target_pos,
-    0x1C1003,  -- content mask (CONTENTS flags)
-    0,         -- exclude mask
-    0,         -- solid type
-    7,         -- object set mask (overridden internally to 0xF)
-    4,         -- collision group
+    0x1C1003, 0, 0, 7, 4,  -- contentMask, exclude, solid, collisionGroup, objectSetMask
     function(ent)
         return true  -- INCLUDE this entity in results
     end
@@ -462,11 +458,7 @@ local result = trace.hull(
     end_pos,
     Vector(-16, -16, 0),   -- hull min bounds
     Vector(16, 16, 72),    -- hull max bounds
-    0x1C1003,  -- content mask (CONTENTS flags)
-    0,         -- exclude mask
-    0,         -- solid type
-    7,         -- object set mask (overridden internally to 0xF)
-    4,         -- collision group
+    0x1C1003, 0, 0, 7, 4,  -- contentMask, exclude, solid, collisionGroup, objectSetMask
     function(ent) return true end,
     true  -- ignore_local: exclude local player
 )
@@ -493,11 +485,7 @@ The `ignore_callback` parameter name is misleading. Despite the name:
 ```lua
 -- Only trace against player pawns, ignore everything else
 local result = trace.line(start, end_pos,
-    0x1C1003,  -- content mask (CONTENTS flags)
-    0,         -- exclude mask
-    0,         -- solid type
-    7,         -- object set mask (overridden internally to 0xF)
-    4,         -- collision group
+    0x1C1003, 0, 0, 7, 4,  -- contentMask, exclude, solid, collisionGroup, objectSetMask
     function(ent)
         -- true = INCLUDE (entity blocks the ray)
         -- false = EXCLUDE (ray passes through)

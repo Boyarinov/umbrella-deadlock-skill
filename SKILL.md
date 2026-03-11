@@ -41,7 +41,17 @@ Read the file listed in the right column to find exact function signatures, para
 | Game rules (game_time, is_pre_game, etc.) | `skill://deadlock-lua/docs/utilities.md` |
 | Global vars (tick_interval, tick_count, etc.) | `skill://deadlock-lua/docs/utilities.md` |
 | Net channel | `skill://deadlock-lua/docs/utilities.md` |
-| Menu system (Create, Find, all widget types) | `skill://deadlock-lua/docs/menu.md` |
+| Menu navigation (Create, Find, tabs, groups) | `skill://deadlock-lua/docs/menu.md` |
+| CMenuSwitch (toggle widget) | `skill://deadlock-lua/docs/menu/switch.md` |
+| CMenuBind (key bind widget) | `skill://deadlock-lua/docs/menu/bind.md` |
+| CMenuButton | `skill://deadlock-lua/docs/menu/button.md` |
+| CMenuSliderFloat / CMenuSliderInt | `skill://deadlock-lua/docs/menu/slider-float.md` or `skill://deadlock-lua/docs/menu/slider-int.md` |
+| CMenuColorPicker | `skill://deadlock-lua/docs/menu/color-picker.md` |
+| CMenuComboBox / CMenuMultiComboBox | `skill://deadlock-lua/docs/menu/combo-box.md` or `skill://deadlock-lua/docs/menu/multi-combo-box.md` |
+| CMenuMultiSelect | `skill://deadlock-lua/docs/menu/multi-select.md` |
+| CMenuInputBox | `skill://deadlock-lua/docs/menu/input-box.md` |
+| CMenuLabel | `skill://deadlock-lua/docs/menu/label.md` |
+| CMenuGearAttachment / CMenuColorPickerAttachment | `skill://deadlock-lua/docs/menu/gear-attachment.md` or `skill://deadlock-lua/docs/menu/color-picker-attachment.md` |
 | Panorama UI interaction | `skill://deadlock-lua/docs/panorama.md` |
 | HTTP requests | `skill://deadlock-lua/docs/http.md` |
 | Color, Vector, Angle, Vec2 constructors and methods | `skill://deadlock-lua/docs/types.md` |
