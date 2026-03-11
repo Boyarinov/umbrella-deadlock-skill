@@ -48,7 +48,7 @@ Read the file listed in the right column to find exact function signatures, para
 | Target selection system | `skill://deadlock-lua/docs/target-selection.md` |
 | Notifications | `skill://deadlock-lua/docs/notifications.md` |
 | Raw struct field access | `skill://deadlock-lua/docs/raw-struct.md` |
-| All enums (ButtonCode, TraceContentMask, FontCreate, etc.) | `skill://deadlock-lua/docs/enums.md` |
+| All enums (ButtonCode, InputBitMask_t, FontCreate, EModifierState, etc.) | `skill://deadlock-lua/docs/enums.md` |
 
 For a complete onboarding walkthrough: `skill://deadlock-lua/docs/getting-started.md`
 
@@ -88,7 +88,7 @@ end)
 local tab = Menu.Create("General", "Section", "Tab", "SubTab")
 local group = tab:Create("Settings")
 local enabled = group:Switch("Enable", false)
-local speed = group:SliderFloat("Speed", 0.0, 100.0, 50.0)
+local speed = group:Slider("Speed", 0.0, 100.0, 50.0)
 
 -- Resources (load once)
 local font = Render.LoadFont("Arial", Enum.FontCreate.FONTFLAG_ANTIALIAS)
@@ -165,8 +165,11 @@ end)
 ### Tracing
 ```lua
 local result = trace.line(start, finish,
-    Enum.TraceContentMask.TRACE_MASK_VISIBLE,
-    nil, nil, nil, nil,
+    0x1C1003,  -- content mask (CONTENTS flags)
+    0,         -- exclude mask
+    0,         -- solid type
+    7,         -- object set mask (overridden internally to 0xF)
+    4,         -- collision group
     function(ent) return true end  -- true = INCLUDE (not ignore!)
 )
 if result.fraction < 1.0 then

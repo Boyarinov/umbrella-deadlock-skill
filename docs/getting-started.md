@@ -31,7 +31,7 @@ A typical script creates menu controls at the top level, then registers callback
 local tab = Menu.Create("General", "MySection", "MyTab", "MySubTab")
 local group = tab:Create("Settings")
 local enabled = group:Switch("Enable", false)
-local speed = group:SliderFloat("Speed", 0.0, 100.0, 50.0)
+local speed = group:Slider("Speed", 0.0, 100.0, 50.0)
 
 -- Persistent state
 local font = Render.LoadFont("Arial", Enum.FontCreate.FONTFLAG_ANTIALIAS)
@@ -219,7 +219,7 @@ local enabled = group:Switch("Enable", false)
 local key = group:Bind("Hotkey", 0)
 
 -- Float slider (min, max, default)
-local speed = group:SliderFloat("Speed", 0.0, 10.0, 5.0)
+local speed = group:Slider("Speed", 0.0, 10.0, 5.0)
 
 -- Integer slider
 local count = group:SliderInt("Count", 1, 10, 3)
@@ -254,7 +254,7 @@ Show or hide widgets based on the state of another widget:
 
 ```lua
 local master = group:Switch("Enable Feature", false)
-local detail = group:SliderFloat("Intensity", 0.0, 1.0, 0.5)
+local detail = group:Slider("Intensity", 0.0, 1.0, 0.5)
 
 -- 'detail' only visible when 'master' is on
 detail:SetVisibility(master)
@@ -436,11 +436,11 @@ local target_pos = Vector(1000, 500, 100)
 local result = trace.line(
     eye_pos,
     target_pos,
-    Enum.TraceContentMask.TRACE_MASK_VISIBLE,  -- content mask
-    nil,   -- exclude
-    nil,   -- as
-    nil,   -- object_set_mask (overridden internally)
-    nil,   -- collision_group
+    0x1C1003,  -- content mask (CONTENTS flags)
+    0,         -- exclude mask
+    0,         -- solid type
+    7,         -- object set mask (overridden internally to 0xF)
+    4,         -- collision group
     function(ent)
         return true  -- INCLUDE this entity in results
     end
@@ -462,8 +462,11 @@ local result = trace.hull(
     end_pos,
     Vector(-16, -16, 0),   -- hull min bounds
     Vector(16, 16, 72),    -- hull max bounds
-    Enum.TraceContentMask.TRACE_MASK_VISIBLE,
-    nil, nil, nil, nil,
+    0x1C1003,  -- content mask (CONTENTS flags)
+    0,         -- exclude mask
+    0,         -- solid type
+    7,         -- object set mask (overridden internally to 0xF)
+    4,         -- collision group
     function(ent) return true end,
     true  -- ignore_local: exclude local player
 )
@@ -490,8 +493,11 @@ The `ignore_callback` parameter name is misleading. Despite the name:
 ```lua
 -- Only trace against player pawns, ignore everything else
 local result = trace.line(start, end_pos,
-    Enum.TraceContentMask.TRACE_MASK_VISIBLE,
-    nil, nil, nil, nil,
+    0x1C1003,  -- content mask (CONTENTS flags)
+    0,         -- exclude mask
+    0,         -- solid type
+    7,         -- object set mask (overridden internally to 0xF)
+    4,         -- collision group
     function(ent)
         -- true = INCLUDE (entity blocks the ray)
         -- false = EXCLUDE (ray passes through)
