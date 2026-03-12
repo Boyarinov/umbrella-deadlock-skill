@@ -63,6 +63,10 @@ Read the file listed in the right column to find exact function signatures, para
 | HERO_LIB (state checks, target finding, ability/item casting, projectile prediction, movement) | `skill://deadlock-lua/docs/hero-lib.md` |
 | LIB_RENDER (render wrappers, animations, hitbox/button system, image/font caching) | `skill://deadlock-lua/docs/render-lib.md` |
 | Ability diagnostics (VData fields, targeting types, casting patterns) | See "Diagnosing ability behavior" section below |
+| Hero ability info (names, descriptions, VData, projectile data, properties) | Use MCP tool `get_hero_abilities` (no file needed -- live game query) |
+| Ability base values (m_mapAbilityProperties from VData) | Use MCP tool `get_ability_properties` with internal ability name |
+| Ability upgrade tiers (m_vecAbilityUpgrades from VData) | Use MCP tool `get_ability_upgrades` with internal ability name |
+| Search ability names in VData | Use MCP tool `search_abilities` with substring query |
 
 For a complete onboarding walkthrough: `skill://deadlock-lua/docs/getting-started.md`
 
@@ -224,39 +228,17 @@ end
 When writing a hero combo script for an unfamiliar ability, **do NOT guess** the cast type.
 Use the MCP bridge tools to inspect the ability at runtime before writing any handling code.
 
-### Step 1: Get ability names
-```lua
-local pawn = entity_list.local_pawn()
-local abilities = pawn:get_abilities()
-for i, ab in ipairs(abilities) do
-    if ab and ab:valid() then
-        print(string.format("[%d] %s", i, ab:get_name()))
-    end
-end
-```
+### Step 1: Query all ability data
+Call the `get_hero_abilities` MCP tool (no parameters). Requires an active game with a local player pawn.
+Returns JSON with per-ability: slot, internal_name, display_name, description, upgrades (tier 1-3),
+class_name, ability_type, activation, targeting_shape, cone_angle, projectile info (speed/radius/gravity_scale
+-- only present for real projectile abilities, default values are filtered out), and properties
+(AbilityCastDelay, AbilityCooldown, AbilityDuration, AbilityCastRange, AbilityChannelTime), cast_range, aoe_radius.
+Descriptions are localized via GameLocalizer; HTML tags are stripped. Upgrade descriptions may contain
+`{s:PropertyName}` placeholders for scaled values.
 
-### Step 2: Read VData targeting fields
-These fields on the ability VData determine HOW the ability targets and casts:
-```lua
-local ab = pawn:get_ability("ability_name_here")
-local vdata = ab:get_vdata()
--- Key fields:
-vdata.m_eAbilityType            -- 1=active, 2=ultimate
-vdata.m_eAbilityActivation      -- activation mode
-vdata.m_eAbilityTargetingShape  -- 0=point/projectile, 2=directional/cone
-vdata.m_flTargetingConeAngle    -- if 0, ability has NO cone → don't use is_target_within_cone
-vdata.m_flTargetingConeHalfWidth
-vdata.m_nAbilityTargetTypes     -- bitmask of valid target types
-```
-
-### Step 3: Read ability-specific class fields
-Use `lookup_class` on the SDK class to find state fields:
-- `m_nCurrentLungeState`, `m_eUltState` → ability has state machine
-- `m_vDashDirection` → directional dash (aim at target, then cast)
-- `m_vCastPosition`, `m_qCastAngles` → stores cast location
-- `m_bInCastDelay`, `m_bChanneling` → standard cast state
-
-### Step 4: Choose the casting pattern
+### Step 2: Determine casting pattern from the returned data
+Use `targeting_shape`, `cone_angle`, and projectile presence from the tool output:
 
 | VData shape | Cone angle | Pattern |
 |-------------|-----------|---------|
@@ -265,6 +247,13 @@ Use `lookup_class` on the SDK class to find state fields:
 | 2 (directional) | 0 | **FOV-based**: `is_target_within_fov` + `cast_ability`. Do NOT use `is_target_within_cone` (always fails with cone=0) |
 | 2 (directional) | > 0 | Cone check works: `is_target_within_cone` + `cast_ability` |
 | Any | N/A | Self-cast / no-target: just `cast_ability` directly |
+
+### Step 3: Inspect SDK class for state fields
+Use `lookup_class` on the `class_name` from the tool output to find state fields:
+- `m_nCurrentLungeState`, `m_eUltState` -- ability has state machine
+- `m_vDashDirection` -- directional dash (aim at target, then cast)
+- `m_vCastPosition`, `m_qCastAngles` -- stores cast location
+- `m_bInCastDelay`, `m_bChanneling` -- standard cast state
 
 ### Common mistake
 `HERO_LIB.is_target_within_cone` reads `m_flTargetingConeAngle` from VData. If it's 0, the function
